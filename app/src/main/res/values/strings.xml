@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">UniVault</string>
+    <string name="notification_channel_class_reminders_name">Schedule Reminders</string>
+    <string name="notification_channel_class_reminders_desc">Reminds you 15 minutes before upcoming classes, exams, and syllabus milestones</string>
+</resources>

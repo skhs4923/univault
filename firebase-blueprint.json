@@ -1,0 +1,228 @@
+{
+  "entities": {
+    "College": {
+      "title": "College",
+      "description": "Access-code-protected college workspace card containing isolated academic documents and sections",
+      "type": "object",
+      "properties": {
+        "collegeId": { "type": "string", "description": "Unique college workspace ID" },
+        "collegeName": { "type": "string", "description": "Display name of the college" },
+        "description": { "type": "string", "description": "Optional department or campus description" },
+        "accessCode": { "type": "string", "description": "Special uppercase code required to unlock this college card" },
+        "ownerId": { "type": "string", "description": "Creator UID" },
+        "ownerName": { "type": "string", "description": "Creator display name" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server update timestamp" }
+      },
+      "required": ["collegeId", "collegeName", "accessCode", "ownerId", "createdAt", "updatedAt"]
+    },
+    "CollegeCodeLookup": {
+      "title": "CollegeCodeLookup",
+      "description": "Direct-lookup-only mapping from special access code to college metadata (listing forbidden)",
+      "type": "object",
+      "properties": {
+        "collegeId": { "type": "string", "description": "Target college ID" },
+        "collegeName": { "type": "string", "description": "College display name" },
+        "description": { "type": "string", "description": "Optional college description" },
+        "accessCode": { "type": "string", "description": "Normalized special access code matching document ID" },
+        "ownerId": { "type": "string", "description": "Creator UID" },
+        "ownerName": { "type": "string", "description": "Creator display name" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server creation timestamp" }
+      },
+      "required": ["collegeId", "collegeName", "accessCode", "ownerId", "createdAt"]
+    },
+    "UnlockedCollege": {
+      "title": "UnlockedCollege",
+      "description": "Per-user record of a college card unlocked via its special access code",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Member UID" },
+        "collegeId": { "type": "string", "description": "Unlocked college ID" },
+        "collegeName": { "type": "string", "description": "College display name" },
+        "description": { "type": "string", "description": "Optional college description" },
+        "accessCode": { "type": "string", "description": "Verified special access code" },
+        "ownerId": { "type": "string", "description": "College creator UID" },
+        "ownerName": { "type": "string", "description": "College creator name" },
+        "unlockedAt": { "type": "string", "format": "date-time", "description": "Server unlock timestamp" }
+      },
+      "required": ["userId", "collegeId", "collegeName", "accessCode", "ownerId", "unlockedAt"]
+    },
+    "StudyMaterial": {
+      "title": "StudyMaterial",
+      "description": "Academic notes, question papers, and question banks stored inside a specific college card",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner student UID" },
+        "collegeId": { "type": "string", "description": "Parent college workspace ID" },
+        "userName": { "type": "string", "description": "Student display name" },
+        "title": { "type": "string", "description": "Title of the material" },
+        "subject": { "type": "string", "description": "Academic subject" },
+        "courseCode": { "type": "string", "description": "Course code (e.g. CS201)" },
+        "semester": { "type": "string", "description": "Semester identifier" },
+        "professor": { "type": "string", "description": "Professor or instructor name" },
+        "type": { "type": "string", "enum": ["LECTURE_NOTE", "QUESTION_PAPER", "QUESTION_BANK"] },
+        "tags": { "type": "array", "description": "Topic tags" },
+        "content": { "type": "string", "description": "Text content, notes or questions" },
+        "driveUrl": { "type": "string", "description": "Google Drive or cloud sync link" },
+        "fileName": { "type": "string", "description": "Original file name of the document" },
+        "localPath": { "type": "string", "description": "App-private storage path of the document" },
+        "fileSize": { "type": "integer", "description": "File size in bytes" },
+        "mimeType": { "type": "string", "description": "MIME type (e.g. application/pdf)" },
+        "fileBase64": { "type": "string", "description": "Base64 encoded file data for peer syncing" },
+        "totalChunks": { "type": "integer", "description": "Total file chunks for documents up to 3MB" },
+        "hasChunks": { "type": "boolean", "description": "Whether file is stored in file_chunks subcollection" },
+        "isShared": { "type": "boolean", "description": "Whether shared with peers in the same college" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server update timestamp" }
+      },
+      "required": ["userId", "collegeId", "title", "subject", "courseCode", "type", "createdAt", "updatedAt"]
+    },
+    "FileChunk": {
+      "title": "FileChunk",
+      "description": "Chunked Base64 segment for study material attachments up to 3MB",
+      "type": "object",
+      "properties": {
+        "chunkIndex": { "type": "integer", "description": "Zero-based chunk index" },
+        "data": { "type": "string", "description": "Base64 chunk data" }
+      },
+      "required": ["chunkIndex", "data"]
+    },
+    "DiscussionMessage": {
+      "title": "DiscussionMessage",
+      "description": "Real-time peer chat message scoped to a specific college",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Sender UID" },
+        "collegeId": { "type": "string", "description": "Parent college workspace ID" },
+        "userName": { "type": "string", "description": "Sender name" },
+        "channel": { "type": "string", "description": "Course code or topic channel" },
+        "text": { "type": "string", "description": "Message text" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server send timestamp" }
+      },
+      "required": ["userId", "collegeId", "userName", "channel", "text", "createdAt"]
+    },
+    "ScheduleItem": {
+      "title": "ScheduleItem",
+      "description": "Timetable class slot, upcoming exam deadline, or milestone within a college",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Student UID" },
+        "collegeId": { "type": "string", "description": "Parent college workspace ID" },
+        "title": { "type": "string", "description": "Event or class title" },
+        "courseCode": { "type": "string", "description": "Course code" },
+        "dayOfWeek": { "type": "string", "description": "Day of week or specific date" },
+        "timeSlot": { "type": "string", "description": "Time range, e.g. 10:00 - 11:30 AM" },
+        "type": { "type": "string", "enum": ["CLASS", "EXAM", "MILESTONE"] },
+        "dueDate": { "type": "string", "description": "Due date or exam date" },
+        "isCompleted": { "type": "boolean", "description": "Whether milestone is completed" },
+        "syllabusNotes": { "type": "string", "description": "Associated syllabus or notes" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server update timestamp" }
+      },
+      "required": ["userId", "collegeId", "title", "courseCode", "type", "createdAt", "updatedAt"]
+    },
+    "Quiz": {
+      "title": "Quiz",
+      "description": "Custom test or quiz within a college",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Student UID" },
+        "collegeId": { "type": "string", "description": "Parent college workspace ID" },
+        "title": { "type": "string", "description": "Quiz title" },
+        "subject": { "type": "string", "description": "Subject name" },
+        "courseCode": { "type": "string", "description": "Course code" },
+        "positiveMarks": { "type": "integer", "description": "Marks per correct answer" },
+        "negativeMarks": { "type": "number", "description": "Penalty per incorrect answer" },
+        "durationMinutes": { "type": "integer", "description": "Duration in minutes" },
+        "questionsCount": { "type": "integer", "description": "Number of questions" },
+        "questionsJson": { "type": "string", "description": "Serialized questions JSON" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server update timestamp" }
+      },
+      "required": ["userId", "collegeId", "title", "subject", "questionsJson", "createdAt", "updatedAt"]
+    },
+    "TestResult": {
+      "title": "TestResult",
+      "description": "Completed student test report within a college",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Student UID" },
+        "collegeId": { "type": "string", "description": "Parent college workspace ID" },
+        "quizId": { "type": "string", "description": "ID of the quiz taken" },
+        "quizTitle": { "type": "string", "description": "Title of the quiz" },
+        "subject": { "type": "string", "description": "Subject name" },
+        "score": { "type": "number", "description": "Achieved score" },
+        "totalMarks": { "type": "number", "description": "Total marks possible" },
+        "accuracy": { "type": "number", "description": "Percentage accuracy" },
+        "summary": { "type": "string", "description": "Performance summary" },
+        "answersJson": { "type": "string", "description": "Submitted answers and analysis JSON" },
+        "weakTopics": { "type": "string", "description": "Topics requiring revision" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server creation timestamp" }
+      },
+      "required": ["userId", "collegeId", "quizTitle", "subject", "score", "totalMarks", "createdAt"]
+    },
+    "FlashcardDeck": {
+      "title": "FlashcardDeck",
+      "description": "Digital flashcard study deck generated from selected note text within a college",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner student UID" },
+        "collegeId": { "type": "string", "description": "Parent college workspace ID" },
+        "title": { "type": "string", "description": "Flashcard deck title" },
+        "subject": { "type": "string", "description": "Academic subject" },
+        "courseCode": { "type": "string", "description": "Course code" },
+        "sourceNoteId": { "type": "string", "description": "Optional source study material ID" },
+        "sourceNoteTitle": { "type": "string", "description": "Optional source study note title" },
+        "sourceExcerpt": { "type": "string", "description": "Selected note text excerpt used to generate the deck" },
+        "cardsCount": { "type": "integer", "description": "Total flashcards in the deck" },
+        "masteredCount": { "type": "integer", "description": "Number of mastered flashcards" },
+        "cardsJson": { "type": "string", "description": "Serialized flashcards JSON array" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server update timestamp" }
+      },
+      "required": ["userId", "collegeId", "title", "subject", "cardsJson", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/colleges/{collegeId}": {
+      "schema": { "$ref": "#/entities/College" },
+      "description": "Access-code-gated college workspace metadata"
+    },
+    "/college_codes/{codeKey}": {
+      "schema": { "$ref": "#/entities/CollegeCodeLookup" },
+      "description": "Direct-get-only code lookup index mapping special code to college"
+    },
+    "/users/{userId}/unlocked_colleges/{collegeId}": {
+      "schema": { "$ref": "#/entities/UnlockedCollege" },
+      "description": "College cards unlocked by a signed-in user via special access code"
+    },
+    "/colleges/{collegeId}/study_materials/{materialId}": {
+      "schema": { "$ref": "#/entities/StudyMaterial" },
+      "description": "Study materials stored exclusively inside a specific college card"
+    },
+    "/colleges/{collegeId}/study_materials/{materialId}/file_chunks/{chunkId}": {
+      "schema": { "$ref": "#/entities/FileChunk" },
+      "description": "Chunked attachments for study materials inside a college"
+    },
+    "/colleges/{collegeId}/discussion_messages/{messageId}": {
+      "schema": { "$ref": "#/entities/DiscussionMessage" },
+      "description": "College-isolated peer discussion messages"
+    },
+    "/colleges/{collegeId}/schedules/{scheduleId}": {
+      "schema": { "$ref": "#/entities/ScheduleItem" },
+      "description": "College-scoped timetable slots, exams, and milestones"
+    },
+    "/colleges/{collegeId}/quizzes/{quizId}": {
+      "schema": { "$ref": "#/entities/Quiz" },
+      "description": "College-scoped quizzes"
+    },
+    "/colleges/{collegeId}/test_results/{resultId}": {
+      "schema": { "$ref": "#/entities/TestResult" },
+      "description": "College-scoped quiz scores and performance analytics"
+    },
+    "/colleges/{collegeId}/flashcard_decks/{deckId}": {
+      "schema": { "$ref": "#/entities/FlashcardDeck" },
+      "description": "College-scoped AI and user-generated digital flashcard decks"
+    }
+  }
+}

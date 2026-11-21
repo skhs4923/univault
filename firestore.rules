@@ -1,0 +1,492 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidCode(code) {
+      return code is string && code.size() >= 4 && code.size() <= 32 && code.matches('^[A-Z0-9_\\-]+$');
+    }
+
+    function hasUnlockedCollege(collegeId) {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid)/unlocked_colleges/$(collegeId));
+    }
+
+    function isValidCollege(data) {
+      return data.collegeId is string && isValidId(data.collegeId) &&
+             data.collegeName is string && data.collegeName.size() >= 2 && data.collegeName.size() <= 120 &&
+             data.accessCode is string && isValidCode(data.accessCode) &&
+             data.ownerId is string && data.ownerId == request.auth.uid &&
+             (!('description' in data) || (data.description is string && data.description.size() <= 300)) &&
+             (!('ownerName' in data) || (data.ownerName is string && data.ownerName.size() <= 100)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidCollegeCode(data) {
+      return data.collegeId is string && isValidId(data.collegeId) &&
+             data.collegeName is string && data.collegeName.size() >= 2 && data.collegeName.size() <= 120 &&
+             data.accessCode is string && isValidCode(data.accessCode) &&
+             data.ownerId is string && data.ownerId == request.auth.uid &&
+             (!('description' in data) || (data.description is string && data.description.size() <= 300)) &&
+             (!('ownerName' in data) || (data.ownerName is string && data.ownerName.size() <= 100)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    function isValidUnlockedCollege(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.collegeId is string && isValidId(data.collegeId) &&
+             data.collegeName is string && data.collegeName.size() >= 2 && data.collegeName.size() <= 120 &&
+             data.accessCode is string && isValidCode(data.accessCode) &&
+             data.ownerId is string && isValidId(data.ownerId) &&
+             (!('description' in data) || (data.description is string && data.description.size() <= 300)) &&
+             (!('ownerName' in data) || (data.ownerName is string && data.ownerName.size() <= 100)) &&
+             data.unlockedAt is timestamp && data.unlockedAt <= request.time;
+    }
+
+    function isValidStudyMaterial(data, collegeId) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.collegeId is string && data.collegeId == collegeId &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+             data.subject is string && data.subject.size() >= 1 && data.subject.size() <= 100 &&
+             data.courseCode is string && data.courseCode.size() >= 1 && data.courseCode.size() <= 50 &&
+             data.type in ['LECTURE_NOTE', 'QUESTION_PAPER', 'QUESTION_BANK'] &&
+             (!('userName' in data) || (data.userName is string && data.userName.size() <= 100)) &&
+             (!('semester' in data) || (data.semester is string && data.semester.size() <= 50)) &&
+             (!('professor' in data) || (data.professor is string && data.professor.size() <= 100)) &&
+             (!('content' in data) || (data.content is string && data.content.size() <= 200000)) &&
+             (!('driveUrl' in data) || (data.driveUrl is string && data.driveUrl.size() <= 1000)) &&
+             (!('fileName' in data) || (data.fileName is string && data.fileName.size() <= 260)) &&
+             (!('localPath' in data) || (data.localPath is string && data.localPath.size() <= 500)) &&
+             (!('fileSize' in data) || data.fileSize is int || data.fileSize is number) &&
+             (!('mimeType' in data) || (data.mimeType is string && data.mimeType.size() <= 100)) &&
+             (!('fileBase64' in data) || (data.fileBase64 is string && data.fileBase64.size() <= 900000)) &&
+             (!('totalChunks' in data) || data.totalChunks is int) &&
+             (!('hasChunks' in data) || data.hasChunks is bool) &&
+             (!('isShared' in data) || data.isShared is bool) &&
+             (!('tags' in data) || (data.tags is list && data.tags.size() <= 20 && (data.tags.size() == 0 || (data.tags[0] is string && data.tags[0].size() <= 50)))) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidFileChunk(data) {
+      return data.chunkIndex is int &&
+             data.chunkIndex >= 0 &&
+             data.chunkIndex <= 20 &&
+             data.data is string &&
+             data.data.size() <= 800000;
+    }
+
+    function isValidDiscussionMessage(data, collegeId) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.collegeId is string && data.collegeId == collegeId &&
+             data.userName is string && data.userName.size() >= 1 && data.userName.size() <= 100 &&
+             data.channel is string && data.channel.size() >= 1 && data.channel.size() <= 100 &&
+             data.text is string && data.text.size() >= 1 && data.text.size() <= 5000 &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    function isValidScheduleItem(data, collegeId) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.collegeId is string && data.collegeId == collegeId &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+             data.courseCode is string && data.courseCode.size() >= 1 && data.courseCode.size() <= 50 &&
+             data.type in ['CLASS', 'EXAM', 'MILESTONE'] &&
+             (!('dayOfWeek' in data) || (data.dayOfWeek is string && data.dayOfWeek.size() <= 50)) &&
+             (!('timeSlot' in data) || (data.timeSlot is string && data.timeSlot.size() <= 100)) &&
+             (!('dueDate' in data) || (data.dueDate is string && data.dueDate.size() <= 50)) &&
+             (!('isCompleted' in data) || data.isCompleted is bool) &&
+             (!('syllabusNotes' in data) || (data.syllabusNotes is string && data.syllabusNotes.size() <= 5000)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidQuiz(data, collegeId) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.collegeId is string && data.collegeId == collegeId &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+             data.subject is string && data.subject.size() >= 1 && data.subject.size() <= 100 &&
+             (!('courseCode' in data) || (data.courseCode is string && data.courseCode.size() <= 50)) &&
+             (!('positiveMarks' in data) || data.positiveMarks is int || data.positiveMarks is number) &&
+             (!('negativeMarks' in data) || data.negativeMarks is number || data.negativeMarks is int) &&
+             (!('durationMinutes' in data) || data.durationMinutes is int) &&
+             (!('questionsCount' in data) || data.questionsCount is int) &&
+             data.questionsJson is string && data.questionsJson.size() <= 100000 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidTestResult(data, collegeId) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.collegeId is string && data.collegeId == collegeId &&
+             data.quizTitle is string && data.quizTitle.size() >= 1 && data.quizTitle.size() <= 200 &&
+             data.subject is string && data.subject.size() >= 1 && data.subject.size() <= 100 &&
+             (!('quizId' in data) || (data.quizId is string && data.quizId.size() <= 128)) &&
+             (data.score is number || data.score is int) &&
+             (data.totalMarks is number || data.totalMarks is int) &&
+             (!('accuracy' in data) || data.accuracy is number || data.accuracy is int) &&
+             (!('summary' in data) || (data.summary is string && data.summary.size() <= 5000)) &&
+             (!('answersJson' in data) || (data.answersJson is string && data.answersJson.size() <= 100000)) &&
+             (!('weakTopics' in data) || (data.weakTopics is string && data.weakTopics.size() <= 1000)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    function isValidFlashcardDeck(data, collegeId) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.collegeId is string && data.collegeId == collegeId &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+             data.subject is string && data.subject.size() >= 1 && data.subject.size() <= 100 &&
+             (!('courseCode' in data) || (data.courseCode is string && data.courseCode.size() <= 50)) &&
+             (!('sourceNoteId' in data) || (data.sourceNoteId is string && data.sourceNoteId.size() <= 128)) &&
+             (!('sourceNoteTitle' in data) || (data.sourceNoteTitle is string && data.sourceNoteTitle.size() <= 200)) &&
+             (!('sourceExcerpt' in data) || (data.sourceExcerpt is string && data.sourceExcerpt.size() <= 20000)) &&
+             (!('cardsCount' in data) || data.cardsCount is int) &&
+             (!('masteredCount' in data) || data.masteredCount is int) &&
+             data.cardsJson is string && data.cardsJson.size() <= 200000 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    // 0. Special Access Code Lookup (get by exact code only; listing forbidden)
+    match /college_codes/{codeKey} {
+      allow get: if isSignedIn() && isValidCode(codeKey);
+      allow list: if false;
+
+      allow create: if isSignedIn() &&
+                       isValidCode(codeKey) &&
+                       incoming().keys().hasAll(['collegeId', 'collegeName', 'accessCode', 'ownerId', 'createdAt']) &&
+                       incoming().keys().hasOnly(['collegeId', 'collegeName', 'description', 'accessCode', 'ownerId', 'ownerName', 'createdAt']) &&
+                       incoming().accessCode == codeKey &&
+                       isValidCollegeCode(incoming()) &&
+                       exists(/databases/$(database)/documents/colleges/$(incoming().collegeId)) &&
+                       get(/databases/$(database)/documents/colleges/$(incoming().collegeId)).data.ownerId == request.auth.uid &&
+                       get(/databases/$(database)/documents/colleges/$(incoming().collegeId)).data.accessCode == codeKey;
+
+      allow update: if false;
+      allow delete: if isSignedIn() && isValidCode(codeKey) && existing().ownerId == request.auth.uid;
+    }
+
+    // 0b. Per-User Unlocked College Cards (verified against authoritative college accessCode)
+    match /users/{userId}/unlocked_colleges/{collegeId} {
+      allow get: if isSignedIn() && isValidId(collegeId) && request.auth.uid == userId;
+      allow list: if isSignedIn() && request.auth.uid == userId;
+
+      allow create: if isSignedIn() &&
+                       request.auth.uid == userId &&
+                       isValidId(collegeId) &&
+                       incoming().keys().hasAll(['userId', 'collegeId', 'collegeName', 'accessCode', 'ownerId', 'unlockedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'collegeId', 'collegeName', 'description', 'accessCode', 'ownerId', 'ownerName', 'unlockedAt']) &&
+                       isValidUnlockedCollege(incoming()) &&
+                       incoming().collegeId == collegeId &&
+                       exists(/databases/$(database)/documents/colleges/$(collegeId)) &&
+                       get(/databases/$(database)/documents/colleges/$(collegeId)).data.accessCode == incoming().accessCode;
+
+      allow update: if isSignedIn() &&
+                       request.auth.uid == userId &&
+                       isValidId(collegeId) &&
+                       isValidUnlockedCollege(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().collegeId == existing().collegeId &&
+                       incoming().ownerId == existing().ownerId &&
+                       incoming().unlockedAt == existing().unlockedAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['collegeName', 'description', 'ownerName']) &&
+                       get(/databases/$(database)/documents/colleges/$(collegeId)).data.accessCode == incoming().accessCode;
+
+      allow delete: if isSignedIn() && isValidId(collegeId) && request.auth.uid == userId;
+    }
+
+    // 1. College Workspace Documents & Strictly Isolated Sections
+    match /colleges/{collegeId} {
+      allow get: if isSignedIn() &&
+                    isValidId(collegeId) &&
+                    (existing().ownerId == request.auth.uid || hasUnlockedCollege(collegeId));
+      allow list: if false;
+
+      allow create: if isSignedIn() &&
+                       isValidId(collegeId) &&
+                       incoming().collegeId == collegeId &&
+                       incoming().keys().hasAll(['collegeId', 'collegeName', 'accessCode', 'ownerId', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['collegeId', 'collegeName', 'description', 'accessCode', 'ownerId', 'ownerName', 'createdAt', 'updatedAt']) &&
+                       isValidCollege(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(collegeId) &&
+                       isValidCollege(incoming()) &&
+                       existing().ownerId == request.auth.uid &&
+                       incoming().ownerId == existing().ownerId &&
+                       incoming().collegeId == existing().collegeId &&
+                       incoming().accessCode == existing().accessCode &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['collegeName', 'description', 'ownerName', 'updatedAt']);
+
+      allow delete: if isSignedIn() && isValidId(collegeId) && existing().ownerId == request.auth.uid;
+
+      // 1a. College-Scoped Study Materials
+      match /study_materials/{materialId} {
+        allow get: if isSignedIn() &&
+                      isValidId(materialId) &&
+                      (existing().userId == request.auth.uid || existing().isShared == true) &&
+                      hasUnlockedCollege(collegeId);
+
+        allow list: if isSignedIn() &&
+                       (resource.data.userId == request.auth.uid || resource.data.isShared == true) &&
+                       hasUnlockedCollege(collegeId);
+
+        allow create: if isSignedIn() &&
+                         isValidId(materialId) &&
+                         incoming().keys().hasAll(['userId', 'collegeId', 'title', 'subject', 'courseCode', 'type', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'collegeId', 'userName', 'title', 'subject', 'courseCode',
+                           'semester', 'professor', 'type', 'tags', 'content', 'driveUrl',
+                           'fileName', 'localPath', 'fileSize', 'mimeType', 'fileBase64',
+                           'totalChunks', 'hasChunks', 'isShared', 'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidStudyMaterial(incoming(), collegeId) &&
+                         hasUnlockedCollege(collegeId);
+
+        allow update: if isSignedIn() &&
+                         isValidId(materialId) &&
+                         isValidStudyMaterial(incoming(), collegeId) &&
+                         existing().userId == request.auth.uid &&
+                         incoming().userId == existing().userId &&
+                         incoming().collegeId == existing().collegeId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'userName', 'title', 'subject', 'courseCode', 'semester', 'professor',
+                           'type', 'tags', 'content', 'driveUrl', 'fileName', 'localPath',
+                           'fileSize', 'mimeType', 'fileBase64', 'totalChunks', 'hasChunks',
+                           'isShared', 'updatedAt'
+                         ]) &&
+                         hasUnlockedCollege(collegeId);
+
+        allow delete: if isSignedIn() &&
+                         isValidId(materialId) &&
+                         existing().userId == request.auth.uid &&
+                         hasUnlockedCollege(collegeId);
+
+        // File Chunks subcollection (up to 3MB) strictly gated by college unlock & ownership
+        match /file_chunks/{chunkId} {
+          allow get: if isSignedIn() &&
+                        isValidId(chunkId) &&
+                        hasUnlockedCollege(collegeId) &&
+                        (
+                          get(/databases/$(database)/documents/colleges/$(collegeId)/study_materials/$(materialId)).data.userId == request.auth.uid ||
+                          get(/databases/$(database)/documents/colleges/$(collegeId)/study_materials/$(materialId)).data.isShared == true
+                        );
+
+          allow list: if isSignedIn() &&
+                         hasUnlockedCollege(collegeId) &&
+                         (
+                           get(/databases/$(database)/documents/colleges/$(collegeId)/study_materials/$(materialId)).data.userId == request.auth.uid ||
+                           get(/databases/$(database)/documents/colleges/$(collegeId)/study_materials/$(materialId)).data.isShared == true
+                         );
+
+          allow create, update: if isSignedIn() &&
+                                   isValidId(chunkId) &&
+                                   incoming().keys().hasAll(['chunkIndex', 'data']) &&
+                                   incoming().keys().hasOnly(['chunkIndex', 'data']) &&
+                                   isValidFileChunk(incoming()) &&
+                                   hasUnlockedCollege(collegeId) &&
+                                   get(/databases/$(database)/documents/colleges/$(collegeId)/study_materials/$(materialId)).data.userId == request.auth.uid;
+
+          allow delete: if isSignedIn() &&
+                           isValidId(chunkId) &&
+                           hasUnlockedCollege(collegeId) &&
+                           get(/databases/$(database)/documents/colleges/$(collegeId)/study_materials/$(materialId)).data.userId == request.auth.uid;
+        }
+      }
+
+      // 1b. College-Scoped Peer Discussions
+      match /discussion_messages/{messageId} {
+        allow get: if isSignedIn() && isValidId(messageId) && hasUnlockedCollege(collegeId);
+        allow list: if isSignedIn() && hasUnlockedCollege(collegeId);
+
+        allow create: if isSignedIn() &&
+                         isValidId(messageId) &&
+                         incoming().keys().hasAll(['userId', 'collegeId', 'userName', 'channel', 'text', 'createdAt']) &&
+                         incoming().keys().hasOnly(['userId', 'collegeId', 'userName', 'channel', 'text', 'createdAt']) &&
+                         isValidDiscussionMessage(incoming(), collegeId) &&
+                         hasUnlockedCollege(collegeId);
+
+        allow update: if isSignedIn() &&
+                         isValidId(messageId) &&
+                         isValidDiscussionMessage(incoming(), collegeId) &&
+                         existing().userId == request.auth.uid &&
+                         incoming().userId == existing().userId &&
+                         incoming().collegeId == existing().collegeId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['text', 'userName']) &&
+                         hasUnlockedCollege(collegeId);
+
+        allow delete: if isSignedIn() &&
+                         isValidId(messageId) &&
+                         existing().userId == request.auth.uid &&
+                         hasUnlockedCollege(collegeId);
+      }
+
+      // 1c. College-Scoped Schedules, Timetable, Exams & Milestones
+      match /schedules/{scheduleId} {
+        allow get: if isSignedIn() &&
+                      isValidId(scheduleId) &&
+                      existing().userId == request.auth.uid &&
+                      hasUnlockedCollege(collegeId);
+
+        allow list: if isSignedIn() &&
+                       resource.data.userId == request.auth.uid &&
+                       hasUnlockedCollege(collegeId);
+
+        allow create: if isSignedIn() &&
+                         isValidId(scheduleId) &&
+                         incoming().keys().hasAll(['userId', 'collegeId', 'title', 'courseCode', 'type', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'collegeId', 'title', 'courseCode', 'dayOfWeek', 'timeSlot', 'type', 'dueDate', 'isCompleted', 'syllabusNotes', 'createdAt', 'updatedAt']) &&
+                         isValidScheduleItem(incoming(), collegeId) &&
+                         hasUnlockedCollege(collegeId);
+
+        allow update: if isSignedIn() &&
+                         isValidId(scheduleId) &&
+                         isValidScheduleItem(incoming(), collegeId) &&
+                         existing().userId == request.auth.uid &&
+                         incoming().userId == existing().userId &&
+                         incoming().collegeId == existing().collegeId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'courseCode', 'dayOfWeek', 'timeSlot', 'type', 'dueDate', 'isCompleted', 'syllabusNotes', 'updatedAt']) &&
+                         hasUnlockedCollege(collegeId);
+
+        allow delete: if isSignedIn() &&
+                         isValidId(scheduleId) &&
+                         existing().userId == request.auth.uid &&
+                         hasUnlockedCollege(collegeId);
+      }
+
+      // 1d. College-Scoped Quizzes
+      match /quizzes/{quizId} {
+        allow get: if isSignedIn() &&
+                      isValidId(quizId) &&
+                      existing().userId == request.auth.uid &&
+                      hasUnlockedCollege(collegeId);
+
+        allow list: if isSignedIn() &&
+                       resource.data.userId == request.auth.uid &&
+                       hasUnlockedCollege(collegeId);
+
+        allow create: if isSignedIn() &&
+                         isValidId(quizId) &&
+                         incoming().keys().hasAll(['userId', 'collegeId', 'title', 'subject', 'questionsJson', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'collegeId', 'title', 'subject', 'courseCode', 'positiveMarks', 'negativeMarks', 'durationMinutes', 'questionsCount', 'questionsJson', 'createdAt', 'updatedAt']) &&
+                         isValidQuiz(incoming(), collegeId) &&
+                         hasUnlockedCollege(collegeId);
+
+        allow update: if isSignedIn() &&
+                         isValidId(quizId) &&
+                         isValidQuiz(incoming(), collegeId) &&
+                         existing().userId == request.auth.uid &&
+                         incoming().userId == existing().userId &&
+                         incoming().collegeId == existing().collegeId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'subject', 'courseCode', 'positiveMarks', 'negativeMarks', 'durationMinutes', 'questionsCount', 'questionsJson', 'updatedAt']) &&
+                         hasUnlockedCollege(collegeId);
+
+        allow delete: if isSignedIn() &&
+                         isValidId(quizId) &&
+                         existing().userId == request.auth.uid &&
+                         hasUnlockedCollege(collegeId);
+      }
+
+      // 1e. College-Scoped Test Results
+      match /test_results/{resultId} {
+        allow get: if isSignedIn() &&
+                      isValidId(resultId) &&
+                      existing().userId == request.auth.uid &&
+                      hasUnlockedCollege(collegeId);
+
+        allow list: if isSignedIn() &&
+                       resource.data.userId == request.auth.uid &&
+                       hasUnlockedCollege(collegeId);
+
+        allow create: if isSignedIn() &&
+                         isValidId(resultId) &&
+                         incoming().keys().hasAll(['userId', 'collegeId', 'quizTitle', 'subject', 'score', 'totalMarks', 'createdAt']) &&
+                         incoming().keys().hasOnly(['userId', 'collegeId', 'quizId', 'quizTitle', 'subject', 'score', 'totalMarks', 'accuracy', 'summary', 'answersJson', 'weakTopics', 'createdAt']) &&
+                         isValidTestResult(incoming(), collegeId) &&
+                         hasUnlockedCollege(collegeId);
+
+        allow update: if isSignedIn() &&
+                         isValidId(resultId) &&
+                         isValidTestResult(incoming(), collegeId) &&
+                         existing().userId == request.auth.uid &&
+                         incoming().userId == existing().userId &&
+                         incoming().collegeId == existing().collegeId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['quizId', 'quizTitle', 'subject', 'score', 'totalMarks', 'accuracy', 'summary', 'answersJson', 'weakTopics']) &&
+                         hasUnlockedCollege(collegeId);
+
+        allow delete: if isSignedIn() &&
+                         isValidId(resultId) &&
+                         existing().userId == request.auth.uid &&
+                         hasUnlockedCollege(collegeId);
+      }
+
+      // 1f. College-Scoped Flashcard Decks
+      match /flashcard_decks/{deckId} {
+        allow get: if isSignedIn() &&
+                      isValidId(deckId) &&
+                      existing().userId == request.auth.uid &&
+                      hasUnlockedCollege(collegeId);
+
+        allow list: if isSignedIn() &&
+                       resource.data.userId == request.auth.uid &&
+                       hasUnlockedCollege(collegeId);
+
+        allow create: if isSignedIn() &&
+                         isValidId(deckId) &&
+                         incoming().keys().hasAll(['userId', 'collegeId', 'title', 'subject', 'cardsJson', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'collegeId', 'title', 'subject', 'courseCode',
+                           'sourceNoteId', 'sourceNoteTitle', 'sourceExcerpt',
+                           'cardsCount', 'masteredCount', 'cardsJson',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidFlashcardDeck(incoming(), collegeId) &&
+                         hasUnlockedCollege(collegeId);
+
+        allow update: if isSignedIn() &&
+                         isValidId(deckId) &&
+                         isValidFlashcardDeck(incoming(), collegeId) &&
+                         existing().userId == request.auth.uid &&
+                         incoming().userId == existing().userId &&
+                         incoming().collegeId == existing().collegeId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'title', 'subject', 'courseCode',
+                           'sourceNoteId', 'sourceNoteTitle', 'sourceExcerpt',
+                           'cardsCount', 'masteredCount', 'cardsJson',
+                           'updatedAt'
+                         ]) &&
+                         hasUnlockedCollege(collegeId);
+
+        allow delete: if isSignedIn() &&
+                         isValidId(deckId) &&
+                         existing().userId == request.auth.uid &&
+                         hasUnlockedCollege(collegeId);
+      }
+    }
+  }
+}
